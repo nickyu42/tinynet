@@ -21,17 +21,16 @@ namespace toynet {
     };
 
     class Layer {
+    public:
         size_t n;
         size_t m;
         ActFunc func;
 
-    public:
         std::valarray<double> weights;
         std::valarray<double> bias;
         std::valarray<double> activation;
         std::valarray<double> z;
 
-        std::valarray<double> error;
         std::valarray<double> dC_dw;
         std::valarray<double> dC_db;
 
@@ -47,7 +46,6 @@ namespace toynet {
     class Network {
     public:
         std::vector<Layer> layers;
-        std::valarray<double> activation;
 
         const std::valarray<double> &feedforward(const std::valarray<double> &input);
         void backpropogate_and_update(const TrainingSample &sample);
@@ -58,8 +56,12 @@ namespace toynet {
         void update_mini_batch(std::vector<TrainingSample>::iterator mini_batch_begin,
                                std::vector<TrainingSample>::iterator mini_batch_end, double eta);
 
+        void load_parameters(const std::string &json_state);
+
         explicit Network(std::vector<unsigned int> sizes);
     };
+
+    std::string valarray_to_json(const std::valarray<double> &a);
 }
 
 #endif //NEURAL_NET_NETWORK_H

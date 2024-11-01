@@ -6,16 +6,14 @@ int main() {
 
     toynet::Network n({2, 3, 2});
 
-    const std::valarray<double> &out = n.feedforward({1.0, 2.0});
-
-    for (auto x : out) {
-        std::cout << x << " ";
+    for (const toynet::Layer &l : n.layers) {
+        std::cout << l << std::endl;
     }
 
-    std::cout << std::endl;
+    n.backpropogate_and_update(toynet::TrainingSample({1.0, 3.0}, {1.0, 0.0}));
 
     for (const toynet::Layer &l : n.layers) {
-        std::cout << l;
+        std::cout << l << std::endl;
     }
 
     return 0;
