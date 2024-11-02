@@ -1,7 +1,3 @@
-//
-// Created by Nick Yu on 12/09/2024.
-//
-
 #ifndef NEURAL_NET_NETWORK_H
 #define NEURAL_NET_NETWORK_H
 

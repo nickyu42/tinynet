@@ -1,7 +1,3 @@
-//
-// Created by Nick Yu on 12/09/2024.
-//
-
 #include "Network.h"
 
 #include <random>
@@ -50,7 +46,7 @@ toynet::Layer::Layer(toynet::ActFunc a, size_t n, size_t m) : func(a), n(n), m(m
         bias[i] = randf();
 
         for (size_t j = 0; j < m; j++) {
-            weights[i * n + j] = randf();
+            weights[i * m + j] = randf();
         }
     }
 }
@@ -111,10 +107,21 @@ void
 toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
                      double eta) {
     std::default_random_engine rng{};
-    std::shuffle(training_data.begin(), training_data.end(), rng);
 
-    auto it = training_data.begin();
+    for (size_t epoch = 0; epoch < epochs; ++epoch) {
+        std::shuffle(training_data.begin(), training_data.end(), rng);
 
+        for (unsigned int batch_start_i = 0; batch_start_i < mini_batch_size; batch_start_i += mini_batch_size) {
+            auto batch_start = training_data.begin() + batch_start_i;
+            auto batch_end = batch_start_i + mini_batch_size >= training_data.size()
+                             ? training_data.end()
+                             : batch_start + batch_start_i;
+
+            update_mini_batch(batch_start, batch_end, eta);
+        }
+
+        std::cout << "Epoch [" << epoch << "]" << std::endl;
+    }
 }
 
 void toynet::Network::update_mini_batch(std::vector<TrainingSample>::iterator mini_batch_begin,
@@ -126,7 +133,7 @@ void toynet::Network::update_mini_batch(std::vector<TrainingSample>::iterator mi
     dC_dw.reserve(this->layers.size());
     dC_db.reserve(this->layers.size());
 
-    for (const auto &l : this->layers) {
+    for (const auto &l: this->layers) {
         dC_dw.push_back(std::move(std::valarray<double>(l.n * l.m)));
         dC_db.push_back(std::move(std::valarray<double>(l.n)));
     }
