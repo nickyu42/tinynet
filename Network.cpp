@@ -3,8 +3,11 @@
 #include <random>
 #include <iostream>
 #include <sstream>
-#include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <fstream>
+#include <cmath>
+
+#include <nlohmann/json.hpp>
 
 template<typename T>
 T sigmoid(const T &z) {
@@ -79,6 +82,35 @@ std::ostream &operator<<(std::ostream &strm, const toynet::Layer &l) {
     return strm;
 }
 
+std::ostream &operator<<(std::ostream &strm, const toynet::Network &n) {
+    strm << "[";
+    for (size_t i = 0; i < n.layers.size(); ++i) {
+        if (i > 0) {
+            strm << ", ";
+        }
+        strm << n.layers[i];
+    }
+    strm << "]";
+    return strm;
+}
+
+double quadratic_cost(const std::valarray<double> &x, const std::valarray<double> &y) {
+    assert(x.size() == y.size());
+
+    double loss = 0.0;
+
+    for (size_t i = 0; i < x.size(); ++i) {
+        auto d = (x[i] - y[i]);
+        loss += d * d;
+    }
+
+    return loss / 2;
+}
+
+double toynet::Network::compute_loss(const std::valarray<double> &y) {
+    return quadratic_cost(y, this->layers.back().activation);
+}
+
 const std::valarray<double> &toynet::Network::feedforward(const std::valarray<double> &input) {
     // Set input layer activation
     layers[0].activation = input;
@@ -105,8 +137,13 @@ toynet::Network::Network(std::vector<unsigned int> sizes) {
 
 void
 toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
-                     double eta) {
+                     double eta, bool write_state) {
     std::default_random_engine rng{};
+
+    std::ofstream out;
+    if (write_state) {
+        out = std::ofstream("out.json");
+    }
 
     for (size_t epoch = 0; epoch < epochs; ++epoch) {
         std::shuffle(training_data.begin(), training_data.end(), rng);
@@ -121,6 +158,19 @@ toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epo
         }
 
         std::cout << "Epoch [" << epoch << "]" << std::endl;
+
+        // TODO: serialize network state
+        if (write_state) {
+            out << "{"
+                << "\"epoch\":" << epoch << ","
+                << *this
+                << "}";
+        }
+
+    }
+
+    if (write_state) {
+        out.close();
     }
 }
 
@@ -216,4 +266,69 @@ void toynet::Network::load_parameters(const std::string &json_state) {
         }
         this->layers[l + 1].bias = std::move(std::valarray<double>(b.data(), b.size()));
     }
+}
+
+double vector_norm(const std::valarray<double> &v) {
+    return sqrt((v * v).sum());
+}
+
+std::vector<double> toynet::Network::gradient_check(const toynet::TrainingSample &sample, double epsilon) {
+    std::vector<double> diffs(layers.size() - 1);
+
+    // Calculate and store gradients
+    this->backpropogate_and_update(sample);
+
+    for (size_t l = 1; l < layers.size(); ++l) {
+        auto &layer = layers[l];
+        std::vector<double> gradient_diff_vec = {};
+
+        for (size_t i = 0; i < layer.weights.size(); ++i) {
+            auto original_w = layer.weights[i];
+
+            layer.weights[i] = original_w + epsilon;
+            feedforward(sample.first);
+            auto loss_p = compute_loss(sample.second);
+
+            layer.weights[i] = original_w - epsilon;
+            feedforward(sample.first);
+            auto loss_n = compute_loss(sample.second);
+
+            // Restore weight
+            layer.weights[i] = original_w;
+
+            // Finite differences approximation
+            gradient_diff_vec.push_back((loss_p - loss_n) / (2 * epsilon));
+        }
+
+        for (size_t i = 0; i < layer.bias.size(); ++i) {
+            auto original_b = layer.bias[i];
+
+            layer.bias[i] = original_b + epsilon;
+            feedforward(sample.first);
+            auto loss_p = compute_loss(sample.second);
+
+            layer.bias[i] = original_b - epsilon;
+            feedforward(sample.first);
+            auto loss_n = compute_loss(sample.second);
+
+            // Restore bias
+            layer.bias[i] = original_b;
+
+            // Finite differences approximation
+            gradient_diff_vec.push_back((loss_p - loss_n) / (2 * epsilon));
+        }
+
+        std::valarray<double> gradient_diff(gradient_diff_vec.data(), gradient_diff_vec.size());
+        std::valarray<double> gradients(layer.weights.size() + layer.bias.size());
+        gradients[std::slice(0, layer.weights.size(), 1)] = layer.dC_dw;
+        gradients[std::slice(layer.weights.size(), layer.bias.size(), 1)] = layer.dC_db;
+
+        auto diff = vector_norm(gradients - gradient_diff) / (vector_norm(gradient_diff) + vector_norm(gradients));
+
+        std::cout << "Difference for layer " << l << ": " << diff << std::endl;
+
+        diffs.push_back(diff);
+    }
+
+    return diffs;
 }

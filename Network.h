@@ -32,8 +32,6 @@ namespace toynet {
 
         Layer(ActFunc a, size_t n, size_t m);
 
-        friend std::ostream &(::operator<<)(std::ostream &strm, const toynet::Layer &l);
-
         const std::valarray<double> &feedforward(const std::valarray<double> &input);
     };
 
@@ -44,13 +42,18 @@ namespace toynet {
         std::vector<Layer> layers;
 
         const std::valarray<double> &feedforward(const std::valarray<double> &input);
+
         void backpropogate_and_update(const TrainingSample &sample);
 
         void SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
-                 double eta);
+                 double eta, bool write_state = false);
 
         void update_mini_batch(std::vector<TrainingSample>::iterator mini_batch_begin,
                                std::vector<TrainingSample>::iterator mini_batch_end, double eta);
+
+        double compute_loss(const std::valarray<double> &y);
+
+        std::vector<double> gradient_check(const TrainingSample &sample, double epsilon = 1e-5);
 
         void load_parameters(const std::string &json_state);
 
