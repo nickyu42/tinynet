@@ -57,6 +57,10 @@ namespace toynet {
 
         void load_parameters(const std::string &json_state);
 
+        void load_parameters(std::istream &input);
+
+        void dump_parameters(const std::string &filename);
+
         explicit Network(std::vector<unsigned int> sizes);
     };
 

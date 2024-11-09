@@ -161,7 +161,7 @@ toynet::Network::Network(std::vector<unsigned int> sizes) {
 void
 toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
                      double eta, bool write_state) {
-    std::default_random_engine rng{};
+    std::default_random_engine rng{}; // NOLINT(*-msc51-cpp)
 
     std::ofstream out;
     if (write_state) {
@@ -290,6 +290,45 @@ void toynet::Network::load_parameters(const std::string &json_state) {
         }
         this->layers[l + 1].bias = std::move(std::valarray<double>(b.data(), b.size()));
     }
+}
+
+void toynet::Network::load_parameters(std::istream &input) {
+    nlohmann::json o;
+    input >> o;
+    auto layer_parameters = o.get<std::vector<nlohmann::json>>();
+
+    // TODO: duplication
+    for (size_t l = 0; l < layer_parameters.size(); ++l) {
+        auto &p = layer_parameters[l];
+        auto w = p["weights"].get<std::vector<double>>();
+        if (w.size() != this->layers[l + 1].n * this->layers[l + 1].m) {
+            throw std::runtime_error("Given weights matrix does not match layer size");
+        }
+        this->layers[l + 1].weights = std::move(std::valarray<double>(w.data(), w.size()));
+
+        auto b = p["bias"].get<std::vector<double>>();
+        if (b.size() != this->layers[l + 1].n) {
+            throw std::runtime_error("Given bias vector does not match layer size");
+        }
+        this->layers[l + 1].bias = std::move(std::valarray<double>(b.data(), b.size()));
+    }
+}
+
+void toynet::Network::dump_parameters(const std::string &filename) {
+    nlohmann::json o;
+
+    for (size_t i = 1; i < layers.size(); ++i) {
+        nlohmann::json layer;
+        // XXX: write this neater
+        layer["weights"] = nlohmann::json(
+                std::vector<double>(std::begin(layers[i].weights), std::end(layers[i].weights)));
+        layer["bias"] = nlohmann::json(std::vector<double>(std::begin(layers[i].bias), std::end(layers[i].bias)));
+        o.push_back(layer);
+    }
+
+    std::ofstream out(filename);
+    out << o;
+    out.close();
 }
 
 double vector_norm(const std::valarray<double> &v) {

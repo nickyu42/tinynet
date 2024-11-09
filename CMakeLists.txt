@@ -18,25 +18,28 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
-add_executable(neural_net main.cpp Network.cpp Network.h
+add_library(toynet Network.cpp Network.h
         loader/DataLoader.h
         loader/mnist.cpp)
-target_link_libraries(neural_net nlohmann_json::nlohmann_json)
+target_link_libraries(toynet nlohmann_json::nlohmann_json)
 
 enable_testing()
 
 add_executable(
         test_main
         tests/test_main.cpp
-        Network.cpp Network.h
-        loader/DataLoader.h
-        loader/mnist.cpp
+#        Network.cpp Network.h
+#        loader/DataLoader.h
+#        loader/mnist.cpp
 )
 target_link_libraries(
         test_main
         GTest::gtest_main
         nlohmann_json::nlohmann_json
+        toynet
 )
 
 include(GoogleTest)
 gtest_discover_tests(test_main)
+
+add_subdirectory(examples)
