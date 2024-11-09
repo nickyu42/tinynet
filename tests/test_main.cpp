@@ -116,3 +116,23 @@ TEST(NetworkTest, BackpropLargeRandom) {
                     1e-7) << "Difference between approximate gradient and backpropogation gradient should be approximately equal";
     }
 }
+
+TEST(NetworkTest, MiniBatch) {
+    toynet::Network n({2, 2, 1});
+
+    auto p = R"(
+        [
+            {"weights": [0.1, 0.2, 0.3, 0.4], "bias": [0.1, 0.2]},
+            {"weights": [0.2, 0.3], "bias": [0.1]}
+        ]
+    )";
+    n.load_parameters(p);
+
+    std::vector<toynet::TrainingSample> samples = {{{1.0, 0.5}, {1.0}}, {{0.5, 1}, {0.1}}};
+
+    n.update_mini_batch(samples.begin(), samples.end(), 3.0);
+
+    for (auto &l : n.layers) {
+        std::cout << l << std::endl;
+    }
+}

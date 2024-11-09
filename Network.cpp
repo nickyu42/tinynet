@@ -171,11 +171,11 @@ toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epo
     for (size_t epoch = 0; epoch < epochs; ++epoch) {
         std::shuffle(training_data.begin(), training_data.end(), rng);
 
-        for (unsigned int batch_start_i = 0; batch_start_i < mini_batch_size; batch_start_i += mini_batch_size) {
+        for (unsigned int batch_start_i = 0; batch_start_i < training_data.size(); batch_start_i += mini_batch_size) {
             auto batch_start = training_data.begin() + batch_start_i;
             auto batch_end = batch_start_i + mini_batch_size >= training_data.size()
                              ? training_data.end()
-                             : batch_start + batch_start_i;
+                             : batch_start + mini_batch_size;
 
             update_mini_batch(batch_start, batch_end, eta);
         }
@@ -206,6 +206,7 @@ void toynet::Network::update_mini_batch(std::vector<TrainingSample>::iterator mi
     dC_dw.reserve(this->layers.size());
     dC_db.reserve(this->layers.size());
 
+    // TODO: don't allocate input layer
     for (const auto &l: this->layers) {
         dC_dw.push_back(std::move(std::valarray<double>(l.n * l.m)));
         dC_db.push_back(std::move(std::valarray<double>(l.n)));
@@ -216,7 +217,7 @@ void toynet::Network::update_mini_batch(std::vector<TrainingSample>::iterator mi
         backpropogate_and_update(*sample);
 
         // Sum cost function gradients
-        for (size_t i = 0; i < layers.size(); ++i) {
+        for (size_t i = 1; i < layers.size(); ++i) {
             dC_dw[i] += layers[i].dC_dw;
             dC_db[i] += layers[i].dC_db;
         }
