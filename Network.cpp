@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <fstream>
 #include <cmath>
+#include <tuple>
 
 #include <nlohmann/json.hpp>
 
@@ -15,22 +16,44 @@ T sigmoid(const T &z) {
 }
 
 std::valarray<double> sigmoid_derivative(const std::valarray<double> &z) {
-    auto s = sigmoid(z);
-    return s * (1.0 - s);
+    auto a = sigmoid(z);
+    return a * (1.0 - a);
+}
+
+/**
+ * Product of a vector and another transposed vector.
+ * @param v1 Nx1 vector
+ * @param v2 Mx1 vector
+ * @return NxM matrix
+ */
+std::valarray<double>
+outer_product(const std::valarray<double> &v1, const std::valarray<double> &v2) {
+    auto n = v1.size();
+    auto m = v2.size();
+    std::valarray<double> res(n * m);
+
+    // XXX: this can be optimized
+    for (int row = 0; row < n; ++row) {
+        for (int col = 0; col < m; ++col) {
+            res[row * m + col] = v1[row] * v2[col];
+        }
+    }
+
+    return res;
 }
 
 const std::valarray<double> &toynet::Layer::feedforward(const std::valarray<double> &input) {
     assert(input.size() == this->m);
 
-    for (size_t i = 0; i < n; i++) {
-        z[i] = this->bias[i];
+    for (size_t row = 0; row < n; row++) {
+        z[row] = this->bias[row];
 
-        for (size_t j = 0; j < this->m; j++) {
-            z[i] += this->weights[i * m + j] * input[j];
+        for (size_t col = 0; col < m; col++) {
+            z[row] += this->weights[row * m + col] * input[col];
         }
 
         // TODO: functionality for alternative activation functions
-        activation[i] = sigmoid(z[i]);
+        activation[row] = sigmoid(z[row]);
     }
 
     return this->activation;
@@ -218,7 +241,7 @@ void toynet::Network::backpropogate_and_update(const toynet::TrainingSample &sam
     std::valarray<double> delta = cost_derivative * sigmoid_derivative(this->layers.back().z);
 
     this->layers.back().dC_db = delta;
-    this->layers.back().dC_dw = this->layers[this->layers.size() - 2].activation * delta;
+    this->layers.back().dC_dw = outer_product(delta, this->layers[this->layers.size() - 2].activation);
 
     // propagate the error backwards
     for (size_t l_i = this->layers.size() - 2; l_i > 0; l_i--) {
@@ -227,20 +250,20 @@ void toynet::Network::backpropogate_and_update(const toynet::TrainingSample &sam
 
         std::valarray<double> t(l.z.size());
 
-        for (size_t row = 0; row < l_next.m; row++) {
-            for (size_t col = 0; col < l_next.n; col++) {
+        for (size_t col = 0; col < l_next.m; col++) {
+            for (size_t row = 0; row < l_next.n; row++) {
                 // transposed matrix mul
-                t[col] += l_next.weights[row + col * l_next.n] * delta[col];
+                t[col] += l_next.weights[row * l_next.m + col] * delta[row];
             }
         }
 
         // hadamard
-        t *= sigmoid_derivative(l.activation);
+        t *= sigmoid_derivative(l.z);
 
         delta = t;
 
         l.dC_db = delta;
-        l.dC_dw = this->layers[l_i - 1].activation * delta;
+        l.dC_dw = outer_product(delta, this->layers[l_i - 1].activation);
     }
 }
 
@@ -324,8 +347,6 @@ std::vector<double> toynet::Network::gradient_check(const toynet::TrainingSample
         gradients[std::slice(layer.weights.size(), layer.bias.size(), 1)] = layer.dC_db;
 
         auto diff = vector_norm(gradients - gradient_diff) / (vector_norm(gradient_diff) + vector_norm(gradients));
-
-        std::cout << "Difference for layer " << l << ": " << diff << std::endl;
 
         diffs.push_back(diff);
     }
