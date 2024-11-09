@@ -131,8 +131,4 @@ TEST(NetworkTest, MiniBatch) {
     std::vector<toynet::TrainingSample> samples = {{{1.0, 0.5}, {1.0}}, {{0.5, 1}, {0.1}}};
 
     n.update_mini_batch(samples.begin(), samples.end(), 3.0);
-
-    for (auto &l : n.layers) {
-        std::cout << l << std::endl;
-    }
 }
