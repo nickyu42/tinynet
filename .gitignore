@@ -1,7 +1,10 @@
 cmake-build-debug/
 cmake-build-release/
+build.em/
 .idea/
 data/
 .DS_Store
 venv/
-build/
+build/emsdk/
+wabt/
+emsdk/

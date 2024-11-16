@@ -159,9 +159,9 @@ toynet::Network::Network(std::vector<unsigned int> sizes) {
 }
 
 void
-toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
+toynet::Network::SGD(std::vector<TrainingSample> &training_data, unsigned int epochs, unsigned int mini_batch_size,
                      double eta, bool write_state) {
-    std::default_random_engine rng{}; // NOLINT(*-msc51-cpp)
+    std::random_device rd{};
 
     std::ofstream out;
     if (write_state) {
@@ -169,7 +169,7 @@ toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epo
     }
 
     for (size_t epoch = 0; epoch < epochs; ++epoch) {
-        std::shuffle(training_data.begin(), training_data.end(), rng);
+        std::shuffle(training_data.begin(), training_data.end(), rd);
 
         for (unsigned int batch_start_i = 0; batch_start_i < training_data.size(); batch_start_i += mini_batch_size) {
             auto batch_start = training_data.begin() + batch_start_i;
@@ -179,8 +179,6 @@ toynet::Network::SGD(std::vector<TrainingSample> training_data, unsigned int epo
 
             update_mini_batch(batch_start, batch_end, eta);
         }
-
-        std::cout << "Epoch [" << epoch << "]" << std::endl;
 
         // TODO: serialize network state
         if (write_state) {

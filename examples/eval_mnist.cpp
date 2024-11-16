@@ -1,6 +1,7 @@
 #include <fstream>
 #include <limits>
 #include <iostream>
+#include <chrono>
 
 #include "../Network.h"
 #include "../loader/DataLoader.h"
@@ -18,14 +19,17 @@ int main() {
     n.load_parameters(parameters_file);
     parameters_file.close();
 
+    auto start = std::chrono::high_resolution_clock::now();
+
     auto total_samples = validation_data.size();
     size_t total_correct = 0;
+
     for (auto &sample: validation_data) {
         auto act = n.feedforward(sample.first);
 
         unsigned int predicted_digit = 0;
         double max_activation = std::numeric_limits<double>::lowest();
-        for (unsigned int i = 0; i < 9; ++i) {
+        for (unsigned int i = 0; i < act.size(); ++i) {
             if (act[i] > max_activation) {
                 predicted_digit = i;
                 max_activation = act[i];
@@ -37,8 +41,12 @@ int main() {
         }
     }
 
+    auto end = std::chrono::high_resolution_clock::now();
+
+    std::chrono::duration<double> diff = end - start;
     std::cout << "Total correct: " << total_correct << " / " << total_samples << " = "
-              << static_cast<double>(total_correct) / static_cast<double>(total_samples) * 100.0 << "%" << std::endl;
+              << static_cast<double>(total_correct) / static_cast<double>(total_samples) * 100.0 << "%" << std::endl
+              << " in " << diff.count() << " ms";
 
     return 0;
 }

@@ -9,8 +9,6 @@ namespace toynet {
     class Layer;
 }
 
-std::ostream &operator<<(std::ostream &strm, const toynet::Layer &l);
-
 namespace toynet {
     enum ActFunc {
         Sigmoid
@@ -45,7 +43,7 @@ namespace toynet {
 
         void backpropogate_and_update(const TrainingSample &sample);
 
-        void SGD(std::vector<TrainingSample> training_data, unsigned int epochs, unsigned int mini_batch_size,
+        void SGD(std::vector<TrainingSample> &training_data, unsigned int epochs, unsigned int mini_batch_size,
                  double eta, bool write_state = false);
 
         void update_mini_batch(std::vector<TrainingSample>::iterator mini_batch_begin,

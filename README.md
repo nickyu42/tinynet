@@ -22,3 +22,14 @@ Run MNIST examples
 $ ./build/examples/train_mnist
 $ ./build/examples/eval_mnist
 ```
+
+Build WASM example
+
+Make sure you have EMSCRIPTEN installed and activated
+
+```bash
+$ mkdir build.em
+$ cd build.em
+$ emcmake cmake ..
+$ cmake --build . --target toynet_wasm
+```

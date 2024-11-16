@@ -18,6 +18,9 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
+# Optimizations
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -ftree-vectorize -flto")
+
 add_library(toynet Network.cpp Network.h
         loader/DataLoader.h
         loader/mnist.cpp)
@@ -28,9 +31,6 @@ enable_testing()
 add_executable(
         test_main
         tests/test_main.cpp
-#        Network.cpp Network.h
-#        loader/DataLoader.h
-#        loader/mnist.cpp
 )
 target_link_libraries(
         test_main
@@ -38,6 +38,19 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
         toynet
 )
+
+if (DEFINED EMSCRIPTEN)
+    set(EMSCRIPTEN_FLAGS "-s MODULARIZE=1 -s EXPORT_NAME=\"createModule\" -lembind")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EMSCRIPTEN_FLAGS}")
+
+    add_executable(toynet_wasm Network.cpp Network.h bindings.cpp)
+    target_link_libraries(toynet_wasm nlohmann_json::nlohmann_json)
+
+    set(CMAKE_EXECUTABLE_SUFFIX ".js")
+
+    set_target_properties(toynet_wasm PROPERTIES COMPILE_FLAGS "-Os")
+    set_target_properties(toynet_wasm PROPERTIES LINK_FLAGS    "-Os -s WASM=1 --no-entry")
+endif()
 
 include(GoogleTest)
 gtest_discover_tests(test_main)
